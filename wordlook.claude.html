@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../uikit/3.5.5/css/uikit.min.css" />
+    <title>Lingo</title>
+
+    <style>
+
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: "Jost", sans-serif;
+    font-size: 24px;
+    background: #1a1a2e;
+}
+
+/* ── Splash screen ── */
+#splash {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+}
+
+.lingo-title {
+    font-size: 96px;
+    font-weight: 900;
+    letter-spacing: 16px;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #f5a623, #e94560, #0f3460, #f5a623);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 3s ease infinite, popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+@keyframes shimmer {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes popIn {
+    0%   { opacity: 0; transform: scale(0.3) rotate(-8deg); }
+    60%  { transform: scale(1.1) rotate(2deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+.lingo-letters {
+    display: flex;
+    gap: 10px;
+}
+
+.lingo-tile {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    animation: tileIn 0.5s ease both;
+}
+
+.lingo-tile:nth-child(1) { background: #e94560; animation-delay: 0.2s; }
+.lingo-tile:nth-child(2) { background: #f5a623; animation-delay: 0.35s; }
+.lingo-tile:nth-child(3) { background: #2ecc71; animation-delay: 0.5s; }
+.lingo-tile:nth-child(4) { background: #f5a623; animation-delay: 0.65s; }
+.lingo-tile:nth-child(5) { background: #e94560; animation-delay: 0.8s; }
+
+@keyframes tileIn {
+    0%   { opacity: 0; transform: translateY(30px) scale(0.5); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.btn-start {
+    padding: 16px 56px;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #e94560, #f5a623);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(233, 69, 96, 0.5);
+    animation: fadeUp 0.6s ease 1s both;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.btn-start:hover {
+    transform: translateY(-3px) scale(1.04);
+    box-shadow: 0 14px 32px rgba(233, 69, 96, 0.65);
+}
+
+@keyframes fadeUp {
+    0%   { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Game board ── */
+#board {
+    background: #16213e;
+    border: 3px solid #e94560;
+    border-radius: 16px;
+    box-shadow: 0 0 0 6px rgba(233, 69, 96, 0.15), 0 16px 48px rgba(0,0,0,0.5);
+    padding: 24px 28px 0;
+    width: 420px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.board-header {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 900;
+    letter-spacing: 8px;
+    background: linear-gradient(135deg, #f5a623, #e94560);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 3s ease infinite;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+/* ── Scrollable answers area ── */
+.answers-scroll {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 80px;
+    scrollbar-width: thin;
+    scrollbar-color: #e94560 transparent;
+}
+
+.answers-scroll::-webkit-scrollbar { width: 4px; }
+.answers-scroll::-webkit-scrollbar-thumb { background: #e94560; border-radius: 2px; }
+
+/* ── Sticky bottom: input + letters ── */
+.board-bottom {
+    flex-shrink: 0;
+    border-top: 1px solid rgba(233, 69, 96, 0.25);
+    padding: 10px 0 4px;
+    background: #16213e;
+}
+
+/* ── Shared word-row (answers + input) ── */
+.word-row {
+    text-align: center;
+    padding: 2px 0;
+}
+
+/* Base tile used for both answer tiles and input tiles */
+.tile {
+    display: inline-block;
+    width: 46px;
+    height: 46px;
+    line-height: 46px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 700;
+    border-radius: 6px;
+    margin: 2px;
+    box-sizing: border-box;
+    color: #fff;
+}
+
+/* Answer tiles – coloured by result */
+.answer-tile {
+    /* colour comes from uk-label-* overrides below */
+}
+
+/* Current input tiles */
+.input-tile {
+    background: #0f3460;
+    color: #aac;
+}
+
+.input-tile.filled {
+    color: #fff;
+    background: #1a4a8a;
+}
+
+/* UIkit colour overrides scoped to .tile */
+.tile.uk-label-success { background-color: #32d296; }
+.tile.uk-label-warning { background-color: #faa05a; }
+.tile.uk-label-fault   { background-color: #444; color: #777; }
+.tile:not(.uk-label-success):not(.uk-label-warning):not(.uk-label-fault).answer-tile {
+    background-color: #1a4a8a;
+}
+
+/* Available letter tiles (keyboard) */
+.uk-label {
+    font-size: 20px;
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 4px 0;
+    margin: 3px;
+    display: inline-block;
+    width: 38px;
+    text-align: center;
+    user-select: none;
+    transition: transform 0.1s, opacity 0.1s;
+    color: #fff;
+}
+
+.uk-label:hover {
+    transform: scale(1.12);
+}
+
+.uk-label-fault {
+    background-color: #444;
+    color: #777;
+    cursor: default;
+}
+
+.uk-label-fault:hover {
+    transform: none;
+}
+
+/* letters grid */
+.letters-grid {
+    text-align: center;
+    padding: 6px 0 8px;
+}
+
+/* current input row */
+.input-row {
+    text-align: center;
+    padding: 4px 0 2px;
+}
+
+/* new game button row */
+.new-game-row {
+    text-align: center;
+    padding: 8px 0 14px;
+}
+
+.btn-new {
+    padding: 8px 28px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #e94560, #f5a623);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(233, 69, 96, 0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.btn-new:hover {
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 8px 24px rgba(233, 69, 96, 0.55);
+}
+
+hr.divider {
+    border: none;
+    border-top: 1px solid rgba(233, 69, 96, 0.25);
+    margin: 6px 0;
+}
+
+    </style>
+</head>
+
+<body>
+
+<div id="game">
+
+    <!-- Splash screen -->
+    <div id="splash" v-if="screen === 'splash'">
+        <div class="lingo-title">LINGO</div>
+        <div class="lingo-letters">
+            <div class="lingo-tile">W</div>
+            <div class="lingo-tile">O</div>
+            <div class="lingo-tile">R</div>
+            <div class="lingo-tile">D</div>
+            <div class="lingo-tile">S</div>
+        </div>
+        <button class="btn-start" @click="start()">Speel!</button>
+    </div>
+
+    <!-- Game board -->
+    <div id="board" v-if="screen === 'game'">
+
+        <div class="board-header">LINGO</div>
+
+        <!-- Scrollable guessed words -->
+        <div class="answers-scroll" ref="answersScroll">
+            <div v-for="(row, index) in submitted_answers" :key="index" class="word-row">
+                <span v-for="(class1, i) in row.classes" :key="i"
+                    class="tile answer-tile"
+                    :class="[class1]"
+                    >{{ row.value.at(i) }}</span>
+            </div>
+        </div>
+
+        <!-- Sticky bottom -->
+        <div class="board-bottom">
+
+            <!-- Current input -->
+            <div class="word-row input-row">
+                <span v-for="(ch, i) in current_input()" :key="i"
+                    class="tile input-tile"
+                    :class="{ filled: ch !== '_' }"
+                    @click="ch !== '_' && i === input.length - 1 ? input = input.slice(0, -1) : null"
+                    :style="ch !== '_' && i === input.length - 1 ? 'cursor:pointer' : ''"
+                    >{{ ch }}</span>
+            </div>
+
+            <hr class="divider" />
+
+            <!-- Available letters -->
+            <div class="letters-grid">
+                <span v-for="letter in letters.slice(0, Math.ceil(letters.length / 2))" :key="letter + '0'"
+                    class="uk-label"
+                    :class="{ 'uk-label-success' : letters_success.indexOf(letter) >= 0, 'uk-label-warning' : letters_warning.indexOf(letter) >= 0, 'uk-label-fault' : letters_fault.indexOf(letter) >= 0 }"
+                    @click="pressed(letter)"
+                    >{{ letter }}</span>
+                <br>
+                <span v-for="letter in letters.slice(Math.ceil(letters.length / 2))" :key="letter + '1'"
+                    class="uk-label"
+                    :class="{ 'uk-label-success' : letters_success.indexOf(letter) >= 0, 'uk-label-warning' : letters_warning.indexOf(letter) >= 0, 'uk-label-fault' : letters_fault.indexOf(letter) >= 0 }"
+                    @click="pressed(letter)"
+                    >{{ letter }}</span>
+            </div>
+
+            <div class="new-game-row">
+                <button class="btn-new" @click="start()">Nieuw spel</button>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script src="https://unpkg.com/vue@2.7.14/dist/vue.min.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script src="../js/underscore.min.js"></script>
+
+<script type="text/javascript">
+var game= new Vue({
+    el: "#game",
+    created() {
+        this.get_words();
+    },
+    mounted() {
+        window.addEventListener("keydown", (e) => {
+            if(this.screen !== "game") return;
+            if(e.key === "Backspace" || e.key === "Delete"){
+                this.input= this.input.slice(0, -1);
+            } else if(/^[a-zA-Z]$/.test(e.key)){
+                this.pressed(e.key.toLowerCase());
+            }
+        });
+    },
+    computed: {
+        submitted_answers: function(){
+            var data= [];
+            for(var i= 0; i < this.inputs.length; i++){
+                var val= this.inputs[i];
+                data[i]= { classes : this.input_to_classes(val), value : val };
+            }
+            return data;
+        },
+    },
+    methods: {
+        get_words: function(){
+            let that= this;
+            axios.get("./words/5_letter_words.txt")
+                .then(function(response){
+                    that.words= response.data.toLowerCase().split(" ").filter(w => w.indexOf("'") < 0);
+                })
+                .catch(function(error){
+                    console.log(error);
+                });
+        },
+        init: function(){
+            this.words= this.words.sort((a, b) => 0.5 - Math.random());
+            this.answer= this.words[0];
+            this.letters= _.uniq(this.answer.split(""));
+
+            var no_of_letters= this.levels[this.level].no_of_letters;
+
+            for(var letter0_index= 0; letter0_index < this.letters.length; letter0_index++){
+                var letter0= this.answer.at(letter0_index);
+                for(var i= 1; i < this.words.length; i++){
+                    var word1= this.words[i];
+                    if(word1.indexOf(letter0) <= -1) continue;
+                    var letters= word1.split("");
+                    for(var n= 0; n < letters.length; n++){
+                        var letter= letters[n];
+                        if(this.letters.indexOf(letter) >= 0) continue;
+                        this.letters.push(letter);
+                    }
+                    if(this.letters.length >= no_of_letters) break;
+                }
+            }
+
+            if(this.letters.length > no_of_letters){
+                this.letters= this.letters.slice(0, no_of_letters);
+            }
+            this.letters= this.letters.sort((a, b) => 0.5 - Math.random());
+        },
+        is_word: function(input){
+            return this.words.indexOf(input) >= 0;
+        },
+        is_answer: function(input){
+            return input == this.answer;
+        },
+        input_to_classes: function(input){
+            var letters0= this.answer.split("");
+            var classes1= [];
+
+            for(var i= 0; i < input.length; i++){
+                var letter= input.at(i);
+                classes1[i]= "";
+                if(letter != letters0[i]) continue;
+                letters0[i]= "-";
+                classes1[i]= "uk-label-success";
+                if(this.letters_success.indexOf(letter) <= -1){
+                    this.letters_success.push(letter);
+                }
+            }
+
+            for(var i= 0; i < input.length; i++){
+                var letter= input.at(i);
+                if(classes1[i] > "") continue;
+                classes1[i]= "uk-label-fault";
+                if(letters0.indexOf(letter) >= 0){
+                    classes1[i]= "uk-label-warning";
+                    letters0[letters0.indexOf(letter)]= "-";
+                    if(this.letters_success.indexOf(letter) >= 0){
+                        // already success
+                    } else if(this.letters_warning.indexOf(letter) <= -1){
+                        this.letters_warning.push(letter);
+                    }
+                } else {
+                    if(this.letters_success.indexOf(letter) >= 0){
+                        // already success
+                    } else if(this.letters_warning.indexOf(letter) >= 0){
+                        // already warning
+                    } else if(this.letters_fault.indexOf(letter) <= -1){
+                        this.letters_fault.push(letter);
+                    }
+                }
+            }
+            return classes1;
+        },
+        pressed: function(letter){
+            if(this.is_gameover) return;
+            if(this.letters.indexOf(letter) <= -1) return;
+            this.input+= letter;
+            if(this.input.length >= this.answer.length){
+                if(!this.is_word(this.input)){
+                    if(navigator.vibrate) navigator.vibrate([40, 30, 40]);
+                    this.input= "";
+                    return;
+                } else if(this.is_answer(this.input)){
+                    this.inputs.push(this.input);
+                    this.input= "";
+                    this.is_gameover= true;
+                    this.$nextTick(() => this.scrollAnswers());
+                    this.celebrate();
+                    return;
+                }
+                this.inputs.push(this.input);
+                this.input= "";
+                this.$nextTick(() => this.scrollAnswers());
+            }
+        },
+        scrollAnswers: function(){
+            var el= this.$refs.answersScroll;
+            if(el) el.scrollTop= el.scrollHeight;
+        },
+        current_input: function(){
+            var letters= this.input.split("");
+            var data= [...letters];
+            while(data.length < this.answer.length){
+                data.push("_");
+            }
+            return data;
+        },
+        celebrate: function(){
+            var canvas= document.createElement("canvas");
+            canvas.style.cssText= "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999";
+            canvas.width= window.innerWidth;
+            canvas.height= window.innerHeight;
+            document.body.appendChild(canvas);
+            var ctx= canvas.getContext("2d");
+            var colors= ["#e94560","#f5a623","#2ecc71","#3498db","#fff","#a29bfe"];
+            var particles= [];
+            for(var i= 0; i < 150; i++){
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    w: 8 + Math.random() * 8,
+                    h: 5 + Math.random() * 5,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: 3 + Math.random() * 5,
+                    angle: Math.random() * Math.PI * 2,
+                    spin: (Math.random() - 0.5) * 0.2,
+                    gravity: 0.12,
+                });
+            }
+            var end= Date.now() + 3500;
+            function frame(){
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(function(p){
+                    p.vy+= p.gravity;
+                    p.x+= p.vx;
+                    p.y+= p.vy;
+                    p.angle+= p.spin;
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.angle);
+                    ctx.fillStyle= p.color;
+                    ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+                    ctx.restore();
+                });
+                if(Date.now() < end){
+                    requestAnimationFrame(frame);
+                } else {
+                    canvas.remove();
+                }
+            }
+            requestAnimationFrame(frame);
+        },
+        start: function(){
+            this.inputs= [];
+            this.input= "";
+            this.letters_success= [];
+            this.letters_warning= [];
+            this.letters_fault= [];
+            this.is_gameover= false;
+            this.init();
+            this.screen= "game";
+        },
+    },
+    // add is_gameover to reactive data
+    data() {
+        return {
+            error: "",
+            words: [],
+            answer: "",
+            letters: [],
+            letters_success: [],
+            letters_warning: [],
+            letters_fault: [],
+            level: 0,
+            levels: [{ no_of_letters : 10 }, { no_of_letters : 12 }],
+            inputs: [],
+            input: "",
+            screen: "splash",
+            is_gameover: false,
+        };
+    },
+});
+</script>
+
+</body>
+</html>
