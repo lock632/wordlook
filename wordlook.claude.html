@@ -318,12 +318,10 @@ hr.divider {
         <div class="board-bottom">
 
             <!-- Current input -->
-            <div class="word-row input-row">
+            <div class="word-row input-row" @click="input = input.slice(0, -1)">
                 <span v-for="(ch, i) in current_input()" :key="i"
                     class="tile input-tile"
                     :class="{ filled: ch !== '_' }"
-                    @click="ch !== '_' && i === input.length - 1 ? input = input.slice(0, -1) : null"
-                    :style="ch !== '_' && i === input.length - 1 ? 'cursor:pointer' : ''"
                     >{{ ch }}</span>
             </div>
 
@@ -437,6 +435,9 @@ var game= new Vue({
                 if(letter != letters0[i]) continue;
                 letters0[i]= "-";
                 classes1[i]= "uk-label-success";
+                while(this.letters_warning.indexOf(letter) > -1){
+                    this.letters_warning.splice(this.letters_warning.indexOf(letter), 1);
+                }
                 if(this.letters_success.indexOf(letter) <= -1){
                     this.letters_success.push(letter);
                 }
@@ -449,14 +450,16 @@ var game= new Vue({
                 if(letters0.indexOf(letter) >= 0){
                     classes1[i]= "uk-label-warning";
                     letters0[letters0.indexOf(letter)]= "-";
-                    if(this.letters_success.indexOf(letter) >= 0){
-                        // already success
+                    var successIndex = this.letters_success.indexOf(letter);
+                    if(successIndex > -1){
+                        // letter already marked as success, don't add to warning
                     } else if(this.letters_warning.indexOf(letter) <= -1){
                         this.letters_warning.push(letter);
                     }
                 } else {
-                    if(this.letters_success.indexOf(letter) >= 0){
-                        // already success
+                    var successIndex = this.letters_success.indexOf(letter);
+                    if(successIndex > -1){
+                        // letter already marked as success, don't add to fault
                     } else if(this.letters_warning.indexOf(letter) >= 0){
                         // already warning
                     } else if(this.letters_fault.indexOf(letter) <= -1){
