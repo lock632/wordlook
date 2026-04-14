@@ -161,6 +161,40 @@ body {
     background: #16213e;
 }
 
+/* ── Input controls (clear + hint) ── */
+.input-controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.btn-clear, .btn-hint {
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.2s;
+}
+
+.btn-clear {
+    background: #4a5568;
+    color: #fff;
+}
+
+.btn-hint {
+    background: linear-gradient(135deg, #e94560, #f5a623);
+    color: #fff;
+}
+
+.btn-clear:hover, .btn-hint:hover {
+    transform: translateY(-2px);
+    opacity: 0.85;
+}
+
 /* ── Shared word-row (answers + input) ── */
 .word-row {
     text-align: center;
@@ -296,7 +330,7 @@ hr.divider {
             <div class="lingo-tile">D</div>
             <div class="lingo-tile">S</div>
         </div>
-        <button class="btn-start" @click="start()">Speel!</button>
+        <button class="btn-start" @click="startGame()">Speel!</button>
     </div>
 
     <!-- Game board -->
@@ -306,7 +340,7 @@ hr.divider {
 
         <!-- Scrollable guessed words -->
         <div class="answers-scroll" ref="answersScroll">
-            <div v-for="(row, index) in submitted_answers" :key="index" class="word-row">
+            <div v-for="(row, index) in submittedAnswers" :key="index" class="word-row">
                 <span v-for="(class1, i) in row.classes" :key="i"
                     class="tile answer-tile"
                     :class="[class1]"
@@ -318,11 +352,16 @@ hr.divider {
         <div class="board-bottom">
 
             <!-- Current input -->
-            <div class="word-row input-row" @click="input = input.slice(0, -1)">
-                <span v-for="(ch, i) in current_input()" :key="i"
+            <div class="word-row input-row" @click="handleInputRowClick">
+                <span v-for="(ch, i) in currentInput" :key="i"
                     class="tile input-tile"
                     :class="{ filled: ch !== '_' }"
                     >{{ ch }}</span>
+            </div>
+
+            <div class="input-controls">
+                <button class="btn-clear" @click="handleClearInput">Clear</button>
+                <button v-if="!isGameOver && input.length > 0" class="btn-hint" @click="showHint">Hint</button>
             </div>
 
             <hr class="divider" />
@@ -343,7 +382,7 @@ hr.divider {
             </div>
 
             <div class="new-game-row">
-                <button class="btn-new" @click="start()">Nieuw spel</button>
+                <button class="btn-new" @click="startGame()">Nieuw spel</button>
             </div>
 
         </div>
@@ -359,7 +398,7 @@ hr.divider {
 var game= new Vue({
     el: "#game",
     created() {
-        this.get_words();
+        this.getWords();
     },
     mounted() {
         window.addEventListener("keydown", (e) => {
@@ -372,52 +411,59 @@ var game= new Vue({
         });
     },
     computed: {
-        submitted_answers: function(){
-            var data= [];
-            for(var i= 0; i < this.inputs.length; i++){
-                var val= this.inputs[i];
-                data[i]= { classes : this.input_to_classes(val), value : val };
+        submittedAnswers() {
+            const answers = [];
+            for (let i = 0; i < this.inputs.length; i++) {
+                const value = this.inputs[i];
+                answers.push({ classes: this.inputToClasses(value), value });
+            }
+            return answers;
+        },
+        currentInput() {
+            const letters = this.input.split('');
+            const data = [...letters];
+            while (data.length < this.answer.length) {
+                data.push('_');
             }
             return data;
-        },
+        }
     },
     methods: {
-        get_words: function(){
-            let that= this;
-            axios.get("./words/5_letter_words.txt")
-                .then(function(response){
-                    that.words= response.data.toLowerCase().split(" ").filter(w => w.indexOf("'") < 0);
+        getWords() {
+            axios.get('./words/5_letter_words.txt')
+                .then(response => {
+                    this.words = response.data.toLowerCase().split(' ').filter(w => w.indexOf("'") === -1);
                 })
-                .catch(function(error){
+                .catch(error => {
                     console.log(error);
                 });
         },
-        init: function(){
-            this.words= this.words.sort((a, b) => 0.5 - Math.random());
-            this.answer= this.words[0];
-            this.letters= _.uniq(this.answer.split(""));
+        initGame() {
+            const sortedWords = this.words.sort((a, b) => 0.5 - Math.random());
+            this.answer = sortedWords[0];
+            this.letters = _.uniq(this.answer.split(''));
 
-            var no_of_letters= this.levels[this.level].no_of_letters;
+            const noOfLetters = this.levels[this.level].noOfLetters;
 
-            for(var letter0_index= 0; letter0_index < this.letters.length; letter0_index++){
-                var letter0= this.answer.at(letter0_index);
-                for(var i= 1; i < this.words.length; i++){
-                    var word1= this.words[i];
-                    if(word1.indexOf(letter0) <= -1) continue;
-                    var letters= word1.split("");
-                    for(var n= 0; n < letters.length; n++){
-                        var letter= letters[n];
-                        if(this.letters.indexOf(letter) >= 0) continue;
+            for (let letter0Index = 0; letter0Index < this.letters.length; letter0Index++) {
+                const letter0 = this.answer.at(letter0Index);
+                for (let i = 1; i < this.words.length; i++) {
+                    const word1 = this.words[i];
+                    if (word1.indexOf(letter0) === -1) continue;
+                    const letters = word1.split('');
+                    for (let n = 0; n < letters.length; n++) {
+                        const letter = letters[n];
+                        if (this.letters.indexOf(letter) >= 0) continue;
                         this.letters.push(letter);
                     }
-                    if(this.letters.length >= no_of_letters) break;
+                    if (this.letters.length >= noOfLetters) break;
                 }
             }
 
-            if(this.letters.length > no_of_letters){
-                this.letters= this.letters.slice(0, no_of_letters);
+            if (this.letters.length > noOfLetters) {
+                this.letters = this.letters.slice(0, noOfLetters);
             }
-            this.letters= this.letters.sort((a, b) => 0.5 - Math.random());
+            this.letters.sort((a, b) => 0.5 - Math.random());
         },
         is_word: function(input){
             return this.words.indexOf(input) >= 0;
@@ -425,94 +471,117 @@ var game= new Vue({
         is_answer: function(input){
             return input == this.answer;
         },
-        input_to_classes: function(input){
-            var letters0= this.answer.split("");
-            var classes1= [];
+        handleInputRowClick() {
+            if (this.input.length > 0) {
+                this.input = this.input.slice(0, -1);
+            }
+        },
+        inputToClasses(input) {
+            const letters0 = this.answer.split('');
+            const classes1 = [];
+            const successLetters = this.letters_success;
+            const warningLetters = this.letters_warning;
 
-            for(var i= 0; i < input.length; i++){
-                var letter= input.at(i);
-                classes1[i]= "";
-                if(letter != letters0[i]) continue;
-                letters0[i]= "-";
-                classes1[i]= "uk-label-success";
-                while(this.letters_warning.indexOf(letter) > -1){
-                    this.letters_warning.splice(this.letters_warning.indexOf(letter), 1);
+            for (let i = 0; i < input.length; i++) {
+                const letter = input.at(i);
+                classes1[i] = '';
+                if (letter !== letters0[i]) continue;
+                letters0[i] = '-';
+                classes1[i] = 'uk-label-success';
+                while (warningLetters.indexOf(letter) > -1) {
+                    warningLetters.splice(warningLetters.indexOf(letter), 1);
                 }
-                if(this.letters_success.indexOf(letter) <= -1){
-                    this.letters_success.push(letter);
+                if (successLetters.indexOf(letter) === -1) {
+                    successLetters.push(letter);
                 }
             }
 
-            for(var i= 0; i < input.length; i++){
-                var letter= input.at(i);
-                if(classes1[i] > "") continue;
-                classes1[i]= "uk-label-fault";
-                if(letters0.indexOf(letter) >= 0){
-                    classes1[i]= "uk-label-warning";
-                    letters0[letters0.indexOf(letter)]= "-";
-                    var successIndex = this.letters_success.indexOf(letter);
-                    if(successIndex > -1){
+            for (let i = 0; i < input.length; i++) {
+                const letter = input.at(i);
+                if (classes1[i] !== '') continue;
+                classes1[i] = 'uk-label-fault';
+                if (letters0.indexOf(letter) >= 0) {
+                    classes1[i] = 'uk-label-warning';
+                    letters0[letters0.indexOf(letter)] = '-';
+                    const successIndex = successLetters.indexOf(letter);
+                    if (successIndex > -1) {
                         // letter already marked as success, don't add to warning
-                    } else if(this.letters_warning.indexOf(letter) <= -1){
-                        this.letters_warning.push(letter);
+                    } else if (warningLetters.indexOf(letter) === -1) {
+                        warningLetters.push(letter);
                     }
                 } else {
-                    var successIndex = this.letters_success.indexOf(letter);
-                    if(successIndex > -1){
+                    const successIndex = successLetters.indexOf(letter);
+                    if (successIndex > -1) {
                         // letter already marked as success, don't add to fault
-                    } else if(this.letters_warning.indexOf(letter) >= 0){
+                    } else if (warningLetters.indexOf(letter) >= 0) {
                         // already warning
-                    } else if(this.letters_fault.indexOf(letter) <= -1){
+                    } else if (this.letters_fault.indexOf(letter) === -1) {
                         this.letters_fault.push(letter);
                     }
                 }
             }
             return classes1;
         },
-        pressed: function(letter){
-            if(this.is_gameover) return;
-            if(this.letters.indexOf(letter) <= -1) return;
-            this.input+= letter;
-            if(this.input.length >= this.answer.length){
-                if(!this.is_word(this.input)){
-                    if(navigator.vibrate) navigator.vibrate([40, 30, 40]);
-                    this.input= "";
+        pressed(letter) {
+            if (this.isGameOver) return;
+            if (this.letters.indexOf(letter) === -1) return;
+            this.input += letter;
+            if (this.input.length >= this.answer.length) {
+                if (!this.isWord(this.input)) {
+                    if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+                    this.input = '';
                     return;
-                } else if(this.is_answer(this.input)){
+                } else if (this.isAnswer(this.input)) {
                     this.inputs.push(this.input);
-                    this.input= "";
-                    this.is_gameover= true;
+                    this.input = '';
+                    this.isGameOver = true;
                     this.$nextTick(() => this.scrollAnswers());
                     this.celebrate();
                     return;
                 }
                 this.inputs.push(this.input);
-                this.input= "";
+                this.input = '';
                 this.$nextTick(() => this.scrollAnswers());
             }
         },
-        scrollAnswers: function(){
-            var el= this.$refs.answersScroll;
-            if(el) el.scrollTop= el.scrollHeight;
+        scrollAnswers() {
+            const el = this.$refs.answersScroll;
+            if (el) el.scrollTop = el.scrollHeight;
         },
-        current_input: function(){
-            var letters= this.input.split("");
-            var data= [...letters];
-            while(data.length < this.answer.length){
-                data.push("_");
+        isWord(input) {
+            return this.words.indexOf(input) >= 0;
+        },
+        isAnswer(input) {
+            return input === this.answer;
+        },
+        handleClearInput() {
+            this.input = '';
+        },
+        showHint() {
+            if (this.hintIndex === undefined) {
+                this.hintIndex = -1;
             }
-            return data;
+            if (this.hintIndex < this.answer.length - 1) {
+                this.hintIndex++;
+                const hintLetter = this.answer[this.hintIndex];
+                alert(`Hint: Letter ${this.hintIndex + 1} is "${hintLetter}"`);
+            } else {
+                alert("You've revealed all letters!");
+            }
         },
-        celebrate: function(){
-            var canvas= document.createElement("canvas");
-            canvas.style.cssText= "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999";
-            canvas.width= window.innerWidth;
-            canvas.height= window.innerHeight;
+        isAnswer(input) {
+            return input === this.answer;
+        }
+        celebrate() {
+            const canvas = document.createElement('canvas');
+            canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999';
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
             document.body.appendChild(canvas);
-            var ctx= canvas.getContext("2d");
-            var colors= ["#e94560","#f5a623","#2ecc71","#3498db","#fff","#a29bfe"];
-            var particles= [];
-            for(var i= 0; i < 150; i++){
+            const ctx = canvas.getContext('2d');
+            const colors = ['#e94560', '#f5a623', '#2ecc71', '#3498db', '#fff', '#a29bfe'];
+            const particles = [];
+            for (let i = 0; i < 150; i++) {
                 particles.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height - canvas.height,
@@ -523,25 +592,25 @@ var game= new Vue({
                     vy: 3 + Math.random() * 5,
                     angle: Math.random() * Math.PI * 2,
                     spin: (Math.random() - 0.5) * 0.2,
-                    gravity: 0.12,
+                    gravity: 0.12
                 });
             }
-            var end= Date.now() + 3500;
-            function frame(){
+            const end = Date.now() + 3500;
+            function frame() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                particles.forEach(function(p){
-                    p.vy+= p.gravity;
-                    p.x+= p.vx;
-                    p.y+= p.vy;
-                    p.angle+= p.spin;
+                particles.forEach(p => {
+                    p.vy += p.gravity;
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.angle += p.spin;
                     ctx.save();
                     ctx.translate(p.x, p.y);
                     ctx.rotate(p.angle);
-                    ctx.fillStyle= p.color;
-                    ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
                     ctx.restore();
                 });
-                if(Date.now() < end){
+                if (Date.now() < end) {
                     requestAnimationFrame(frame);
                 } else {
                     canvas.remove();
@@ -549,35 +618,36 @@ var game= new Vue({
             }
             requestAnimationFrame(frame);
         },
-        start: function(){
-            this.inputs= [];
-            this.input= "";
-            this.letters_success= [];
-            this.letters_warning= [];
-            this.letters_fault= [];
-            this.is_gameover= false;
-            this.init();
-            this.screen= "game";
+        startGame() {
+            this.inputs = [];
+            this.input = '';
+            this.letters_success = [];
+            this.letters_warning = [];
+            this.letters_fault = [];
+            this.isGameOver = false;
+            this.initGame();
+            this.screen = 'game';
         },
     },
     // add is_gameover to reactive data
     data() {
         return {
-            error: "",
+            error: '',
             words: [],
-            answer: "",
+            answer: '',
             letters: [],
             letters_success: [],
             letters_warning: [],
             letters_fault: [],
+            hintIndex: undefined,
             level: 0,
-            levels: [{ no_of_letters : 10 }, { no_of_letters : 12 }],
+            levels: [{ noOfLetters: 10 }, { noOfLetters: 12 }],
             inputs: [],
-            input: "",
-            screen: "splash",
-            is_gameover: false,
+            input: '',
+            screen: 'splash',
+            isGameOver: false
         };
-    },
+    }
 });
 </script>
 
